@@ -1,45 +1,19 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+// App.tsx — the entire file
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import { enableScreens } from 'react-native-screens';
+enableScreens();
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+import React              from 'react';
+import { AuthProvider }   from './src/context/AuthProvider';
+import { BookingProvider } from './src/context/BookingProvider';
+import { RootNavigator }  from './src/navigation/RootNavigator';
 
-  return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
-    </SafeAreaProvider>
-  );
-}
-
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
+const App: React.FC = () => (
+  <AuthProvider>
+    <BookingProvider>       
+      <RootNavigator />
+    </BookingProvider>      
+  </AuthProvider>
+);
 
 export default App;

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
 # Getting Started
@@ -95,3 +96,92 @@ To learn more about React Native, take a look at the following resources:
 - [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
 - [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
 - [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+=======
+# 🏨 Hotel Booking App (React Native)
+
+A modern, scalable hotel booking mobile application built with React Native, featuring authentication, hotel listing, detailed views, and booking flow.
+
+---
+
+## 🚀 Features
+
+* 🔐 Authentication Flow (Login)
+* 🏨 Hotel Listing (API + Refetch)
+* 📄 Hotel Details Screen
+* 📅 Booking System (Check-in / Check-out)
+* 👥 Guest Selection
+* 💰 Price Calculation (Tax included)
+* 🔄 Pull-to-refresh support
+* ⚡ Optimized performance with FlatList
+
+---
+
+## 🧠 Tech Stack
+
+* React Native
+* TypeScript
+* React Navigation (Native Stack)
+* Context API (State Management)
+* Custom Hooks Architecture
+
+---
+
+## 📂 Project Structure
+
+```
+src/
+ ├── components/
+ ├── screens/
+ │    ├── home/
+ │    ├── hotel/
+ │    ├── booking/
+ ├── hooks/
+ ├── context/
+ ├── services/
+ ├── navigation/
+ ├── types/
+ └── storage/
+```
+
+---
+
+## ⚙️ Setup Instructions
+
+```bash
+# install dependencies
+npm install
+
+# run app
+npx react-native run-android
+```
+
+---
+
+
+## 📸 Screens
+
+* Home Screen
+* Hotel Details Screen
+* Booking Screen
+
+---
+
+## 🏗️ Architecture Highlights
+
+* Clean separation of concerns
+* Reusable UI components
+* Scalable folder structure
+* Optimized rendering using FlatList
+* Context-based global state
+
+---
+
+## 📌 Future Improvements
+
+* Payment Integration
+* Booking History
+* User Profile
+* Backend Integration (Real API)
+
+---
+>>>>>>> cca61af6bf743e8706c959942b9a460945329883
