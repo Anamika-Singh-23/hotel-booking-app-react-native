@@ -14,7 +14,7 @@ const FAKE_USER_DB: Record<string, SignInPayload> = {
   [VALID_EMAIL]: {
     user: {
       id:        'usr_001',
-      name:      'Rahul Sharma',
+      name:      'Ana',
       email:     VALID_EMAIL,
       phone:     null,
       avatarUrl: null,

@@ -11,6 +11,13 @@ const noop = () => {
   }
 };
 
+const noopAsync = async () => {
+  if (__DEV__) {
+    console.warn('[BookingContext] Async action called outside of BookingProvider.');
+  }
+  return '';   // matches Promise<string> return type of addBookingToHistory
+};
+
 export const defaultBookingContext: BookingContextValue = {
   booking: {
     selectedHotel: null,
@@ -29,6 +36,10 @@ export const defaultBookingContext: BookingContextValue = {
   },
   setBookingDetails: noop,
   clearBooking:      noop,
+
+  bookingHistory:      [],
+  addBookingToHistory: noopAsync,
+  historyLoading:      true,
 };
 
 export const BookingContext = createContext<BookingContextValue>(

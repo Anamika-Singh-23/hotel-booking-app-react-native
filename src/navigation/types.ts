@@ -1,16 +1,28 @@
 // src/navigation/types.ts
 
-import { Hotel } from '../types/hotel.types'; // 🆕 import add karo
+import { Hotel }                     from '../types/hotel.types';
+import { BookingConfirmationParams } from '../types/booking.types';
 
-export type AuthStackParamList = {
-  Login: undefined;
+// ── Tab navigator screens ─────────────────────────────────────────────────────
+// Sirf woh screens jo tab bar mein dikhenge
+
+export type TabParamList = {
+  Home:       undefined;
+  MyBookings: undefined;
+  Profile:    undefined;
 };
 
-// ✏️ HotelDetails add karo — Hotel object param ke saath
+// ── Stack navigator screens ───────────────────────────────────────────────────
+// MainTabs ek entry hai — baki sab stack screens
+
 export type AppStackParamList = {
-  Home:         undefined;
-  HotelDetails: { hotel: Hotel };  // 🆕 full hotel object pass hoga
-  Booking:      { hotel: Hotel }; 
+  Splash:              undefined;
+  MainTabs:            { screen?: keyof TabParamList };  // tab switch support
+  HotelDetails:        { hotel: Hotel };
+  Booking:             { hotel: Hotel };
+  BookingConfirmation: { details: BookingConfirmationParams };
+  Payment:             undefined;
+  PaymentSuccess:      undefined;
 };
 
 export type RootStackParamList = {

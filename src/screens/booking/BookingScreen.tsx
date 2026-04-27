@@ -9,12 +9,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
-  Alert,
   StatusBar,
 }                                                  from 'react-native';
 import { NativeStackScreenProps }                  from '@react-navigation/native-stack';
 import { AppStackParamList }                       from '../../navigation/types';
 import { useBooking }                              from '../../context/BookingContext';
+import { BookingConfirmationParams } from '../../types/booking.types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -418,10 +418,14 @@ export const BookingScreen: React.FC<Props> = ({ route, navigation }) => {
     setGuests(prev => Math.max(prev - 1, MIN_GUESTS));
   }, []);
 
-  const handleConfirm = useCallback(() => {
-    if (!isReadyToBook) return;
+const handleConfirm = useCallback(() => {
+    if (!isReadyToBook || !checkIn || !checkOut) return;
 
-    // Commit local state to BookingContext
+    const subtotal  = hotel.price * nights;
+    const tax       = Math.round(subtotal * 0.18);
+    const total     = subtotal + tax;
+
+    // Commit to BookingContext
     setBookingDetails({
       selectedHotel: hotel,
       checkInDate:   checkIn,
@@ -432,36 +436,29 @@ export const BookingScreen: React.FC<Props> = ({ route, navigation }) => {
       },
     });
 
-    // Show confirmation (replace with BookingConfirmScreen in next step)
-    Alert.alert(
-      'Booking Confirmed! 🎉',
-      `${hotel.name}\n` +
-      `Check-in:  ${formatDate(checkIn)}\n` +
-      `Check-out: ${formatDate(checkOut)}\n` +
-      `Guests: ${guests}\n` +
-      `Nights: ${nights}\n` +
-      `Total: ${formatPrice(
-        hotel.price * nights + Math.round(hotel.price * nights * 0.18),
-      )}`,
-      [
-        {
-          text: 'Done',
-          onPress: () => {
-            clearBooking();
-            navigation.navigate('Home');
-          },
-        },
-      ],
-    );
+    // Build confirmation snapshot
+    const confirmationDetails: BookingConfirmationParams = {
+      hotelName:     hotel.name,
+      hotelLocation: hotel.location,
+      checkInDate:   checkIn.toISOString(),   // Date → string for nav params
+      checkOutDate:  checkOut.toISOString(),
+      guests,
+      nights,
+      pricePerNight: hotel.price,
+      totalPrice:    total,
+      bookingId:     `BK${Date.now()}`,       // fake ID — replace with API response
+    };
+
+    navigation.navigate('BookingConfirmation', { details: confirmationDetails });
+
   }, [
     isReadyToBook,
-    setBookingDetails,
-    clearBooking,
-    hotel,
     checkIn,
     checkOut,
     guests,
     nights,
+    hotel,
+    setBookingDetails,
     navigation,
   ]);
 
