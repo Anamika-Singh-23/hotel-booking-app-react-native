@@ -3,77 +3,57 @@
 import AsyncStorage      from '@react-native-async-storage/async-storage';
 import { BookingRecord } from '../types/booking.types';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Key
-// ─────────────────────────────────────────────────────────────────────────────
+// User-specific key — har user ka alag storage
+const getKey = (userId: string): string =>
+  `@aastha/bookings_${userId}`;
 
-const BOOKING_HISTORY_KEY = '@aastha/booking_history';
+// ── Load ──────────────────────────────────────────────────────────────────────
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Load
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const loadBookingHistory = async (): Promise<BookingRecord[]> => {
+export const loadBookingHistory = async (
+  userId: string,
+): Promise<BookingRecord[]> => {
   try {
-    const raw = await AsyncStorage.getItem(BOOKING_HISTORY_KEY);
+    const raw = await AsyncStorage.getItem(getKey(userId));
     if (!raw) return [];
-
     const parsed = JSON.parse(raw);
-
-    // Safety check — ensure it's actually an array before returning
     return Array.isArray(parsed) ? parsed : [];
-
-  } catch (err) {
-    if (__DEV__) {
-      console.error('[bookingStorage] loadBookingHistory failed:', err);
-    }
-    return [];  // corrupt data — return empty, don't crash
+  } catch {
+    return [];
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Save — replaces entire array (source of truth)
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Save ──────────────────────────────────────────────────────────────────────
 
 export const saveBookingHistory = async (
+  userId:  string,
   history: BookingRecord[],
 ): Promise<void> => {
   try {
-    await AsyncStorage.setItem(
-      BOOKING_HISTORY_KEY,
-      JSON.stringify(history),
-    );
+    await AsyncStorage.setItem(getKey(userId), JSON.stringify(history));
   } catch (err) {
-    if (__DEV__) {
-      console.error('[bookingStorage] saveBookingHistory failed:', err);
-    }
-    // Don't throw — failing to persist shouldn't crash the app
+    if (__DEV__) console.error('[bookingStorage] save error:', err);
   }
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Append — reads current, pushes new record, saves back
-// Used internally by BookingProvider
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Append ────────────────────────────────────────────────────────────────────
 
 export const appendBookingRecord = async (
+  userId: string,
   record: BookingRecord,
 ): Promise<void> => {
-  const existing = await loadBookingHistory();
-  const updated  = [record, ...existing];  // newest first
-  await saveBookingHistory(updated);
+  const existing = await loadBookingHistory(userId);
+  await saveBookingHistory(userId, [record, ...existing]);
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Clear — for testing / logout
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Clear — sirf explicitly call karo (e.g. account delete) ──────────────────
+// Logout pe CALL MAT KARO
 
-export const clearBookingHistory = async (): Promise<void> => {
+export const clearBookingHistory = async (
+  userId: string,
+): Promise<void> => {
   try {
-    await AsyncStorage.removeItem(BOOKING_HISTORY_KEY);
+    await AsyncStorage.removeItem(getKey(userId));
   } catch (err) {
-    if (__DEV__) {
-      console.error('[bookingStorage] clearBookingHistory failed:', err);
-    }
+    if (__DEV__) console.error('[bookingStorage] clear error:', err);
   }
 };

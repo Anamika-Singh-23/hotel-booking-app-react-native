@@ -22,5 +22,5 @@ export interface UseHotelsReturn {
   loading:      boolean;   // true ONLY on first load — drives full screen spinner
   isRefreshing: boolean;   // true ONLY on pull-to-refresh — drives FlatList spinner
   error:        string | null;
-  refetch:      () => void; // replaces old "refresh" — works for both retry + PTR
+  refetch:      (isPullToRefresh?: boolean) => void; // replaces old "refresh" — works for both retry + PTR
 }

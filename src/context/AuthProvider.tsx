@@ -1,109 +1,91 @@
+// src/context/AuthProvider.tsx
 import React, {
   useState,
   useEffect,
   useCallback,
   useMemo,
-} from 'react';
-import { AuthContext }                       from './AuthContext';
-import { persistSession,
-         loadSession,
-         destroySession }                    from '../storage/tokenStorage';
+}                              from 'react';
+import { AuthContext }         from './AuthContext';
+import {
+  persistSession,
+  loadSession,
+  clearSession,
+}                              from '../storage/tokenStorage';
 import {
   AuthUser,
   AuthContextValue,
   SignInPayload,
-  PersistedSession,
-} from '../types/auth.types';
+}                              from '../types/auth.types';
 
-interface AuthProviderProps {
+interface Props {
   children: React.ReactNode;
 }
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export const AuthProvider: React.FC<Props> = ({ children }) => {
+  const [user,      setUser]      = useState<AuthUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // ── State ────────────────────────────────────────────────────────────────
-  const [user,    setUser]    = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true); // true = session check chal rahi hai
-
-  const isAuthenticated = user !== null; // derived — no extra useState
-
-  // ── restoreSession ────────────────────────────────────────────────────────
-  // App launch pe AsyncStorage se session padho.
-  // Yeh function RootNavigator ko bhi expose hota hai future use ke liye.
-
-  const restoreSession = useCallback(async (): Promise<void> => {
-    try {
-      const session: PersistedSession | null = await loadSession();
-
-      if (session?.user && session?.accessToken) {
-        setUser(session.user);
-      } else {
-        setUser(null);
-      }
-    } catch (err) {
-      if (__DEV__) {
-        console.error('[AuthProvider] restoreSession failed:', err);
-      }
-      setUser(null);
-    } finally {
-      // Loading hamesha band honi chahiye — chahe success ho ya fail
-      setLoading(false);
-    }
-  }, []);
-
-  // App mount hote hi session restore karo
+  // App start pe session restore karo
   useEffect(() => {
-    restoreSession();
-  }, [restoreSession]);
-
-  // ── signIn ────────────────────────────────────────────────────────────────
-  // LoginScreen se payload aata hai { user, tokens }
-  // AuthProvider storage handle karta hai — LoginScreen nahi
+    (async () => {
+      try {
+        const session = await loadSession();
+        if (session?.user && session?.accessToken) {
+          setUser(session.user);
+        } else {
+          setUser(null);
+        }
+      } catch {
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+  }, []);
 
   const signIn = useCallback(async (payload: SignInPayload): Promise<void> => {
-    const session: PersistedSession = {
-      user:         payload.user,
-      accessToken:  payload.tokens.accessToken,
-      refreshToken: payload.tokens.refreshToken,
-    };
-
-    // Pehle storage mein save karo, phir state update karo
-    // Agar ulta karo aur storage fail ho — user logged in dikhega lekin
-    // next app open pe session nahi milega
-    await persistSession(session);
-    setUser(payload.user);
-  }, []);
-
-  // ── signOut ───────────────────────────────────────────────────────────────
-  // Storage pehle clear karo, phir state — same reason as above
-
-  const signOut = useCallback(async (): Promise<void> => {
     try {
-      await destroySession();
+      await persistSession({
+        user:         payload.user,
+        accessToken:  payload.tokens.accessToken,
+        refreshToken: payload.tokens.refreshToken,
+      });
+      setUser(payload.user);
     } catch (err) {
-      if (__DEV__) {
-        console.error('[AuthProvider] destroySession failed:', err);
-      }
-      // Storage fail bhi ho — local state toh clear karo
-    } finally {
-      setUser(null);
+      if (__DEV__) console.error('[AuthProvider] signIn error:', err);
+      throw err;
     }
   }, []);
 
-  // ── Context value ─────────────────────────────────────────────────────────
-  // useMemo zaruri hai — iske bina har parent re-render pe
-  // naya object banta hai aur SAARE consumers re-render hote hain
+  // CRITICAL: signOut — sab clear karo, user null karo
+  const signOut = useCallback(async (): Promise<void> => {
+  // ✅ Fix: setUser(null) PEHLE karo
+  // Isse React immediately re-render karta hai
+  // aur RootNavigator Auth dikhata hai
+  // clearSession background mein chal sakta hai
+  setUser(null);
+
+  // Storage clear background mein
+  try {
+    await clearSession();
+  } catch (err) {
+    if (__DEV__) {
+      console.error('[AuthProvider] clearSession failed:', err);
+    }
+    // setUser(null) already ho gaya — user logout dikh raha hai
+    // Storage clear fail hona critical nahi hai UI ke liye
+  }
+}, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      isAuthenticated,
       user,
-      loading,
+      isAuthenticated: user !== null,
+      isLoading,
       signIn,
       signOut,
-      restoreSession,
     }),
-    [isAuthenticated, user, loading, signIn, signOut, restoreSession],
+    [user, isLoading, signIn, signOut],
   );
 
   return (

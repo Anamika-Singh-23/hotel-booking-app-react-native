@@ -1,9 +1,7 @@
 // src/screens/splash/SplashScreen.tsx
+// FULL REPLACE
 
-import React, {
-  useEffect,
-  useRef,
-}                                   from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,269 +9,157 @@ import {
   StyleSheet,
   Platform,
   StatusBar,
-  Dimensions,
 }                                   from 'react-native';
 import { NativeStackScreenProps }   from '@react-navigation/native-stack';
-import { AppStackParamList }        from '../../navigation/types';
-
-// ── Types ─────────────────────────────────────────────────────────────────────
+import { AppStackParamList }        from '../../navigation/types';  // ← App stack
 
 type Props = NativeStackScreenProps<AppStackParamList, 'Splash'>;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Constants
-// ─────────────────────────────────────────────────────────────────────────────
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-const COLORS = {
-  background:   '#1A2340',    // deep navy — brand secondary
-  logoCircle:   '#F09030',    // brand primary — saffron
-  logoText:     '#FFFFFF',
-  appName:      '#FFFFFF',
-  tagline:      'rgba(255,255,255,0.55)',
-  dotsActive:   '#F09030',
-  dotsInactive: 'rgba(255,255,255,0.25)',
-};
-
-const TIMING = {
-  logoIn:     600,    // logo scale + fade in
-  nameIn:     400,    // name fades in after logo
-  nameDelay:  350,    // starts while logo is still animating
-  taglineIn:  350,
-  tagDelay:   600,
-  navigate:   2600,   // total before navigating away
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Animated dot loader
-// Three dots that pulse in sequence — shows app is "working"
-// ─────────────────────────────────────────────────────────────────────────────
+// ── PulsingDots ───────────────────────────────────────────────────────────────
 
 const PulsingDots: React.FC = () => {
-  const dot1 = useRef(new Animated.Value(0.25)).current;
-  const dot2 = useRef(new Animated.Value(0.25)).current;
-  const dot3 = useRef(new Animated.Value(0.25)).current;
+  const dots = [
+    useRef(new Animated.Value(0.25)).current,
+    useRef(new Animated.Value(0.25)).current,
+    useRef(new Animated.Value(0.25)).current,
+  ];
 
   useEffect(() => {
-    // Staggered pulse — each dot starts 200ms after previous
-    const pulse = (dot: Animated.Value, delay: number) =>
+    const anims = dots.map((dot, i) =>
       Animated.loop(
         Animated.sequence([
-          Animated.delay(delay),
+          Animated.delay(i * 200),
           Animated.timing(dot, {
-            toValue:         1,
-            duration:        400,
-            useNativeDriver: true,
+            toValue: 1, duration: 400, useNativeDriver: true,
           }),
           Animated.timing(dot, {
-            toValue:         0.25,
-            duration:        400,
-            useNativeDriver: true,
+            toValue: 0.25, duration: 400, useNativeDriver: true,
           }),
-          // Pause before repeating so loop feels natural
           Animated.delay(400),
         ]),
-      );
-
-    const anim1 = pulse(dot1, 0);
-    const anim2 = pulse(dot2, 200);
-    const anim3 = pulse(dot3, 400);
-
-    anim1.start();
-    anim2.start();
-    anim3.start();
-
-    return () => {
-      anim1.stop();
-      anim2.stop();
-      anim3.stop();
-    };
+      ),
+    );
+    anims.forEach(a => a.start());
+    return () => anims.forEach(a => a.stop());
   }, []);
 
   return (
     <View style={styles.dotsRow}>
-      {[dot1, dot2, dot3].map((dot, i) => (
-        <Animated.View
-          key={i}
-          style={[styles.dot, { opacity: dot }]}
-        />
+      {dots.map((dot, i) => (
+        <Animated.View key={i} style={[styles.dot, { opacity: dot }]} />
       ))}
     </View>
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SplashScreen
-// ─────────────────────────────────────────────────────────────────────────────
+// ── SplashScreen ──────────────────────────────────────────────────────────────
 
 export const SplashScreen: React.FC<Props> = ({ navigation }) => {
 
-  // ── Animation values ──────────────────────────────────────────────────────
-
-  // Logo: scale from 0.4 → 1 + fade from 0 → 1
+  // Animations
   const logoScale   = useRef(new Animated.Value(0.4)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
+  const nameOpacity = useRef(new Animated.Value(0)).current;
+  const nameY       = useRef(new Animated.Value(20)).current;
+  const tagOpacity  = useRef(new Animated.Value(0)).current;
+  const tagY        = useRef(new Animated.Value(12)).current;
 
-  // App name: translate up from +20 → 0 + fade
-  const nameOpacity   = useRef(new Animated.Value(0)).current;
-  const nameTranslate = useRef(new Animated.Value(20)).current;
+  // Splash is inside AppNavigator — user is already authenticated
+  // Sirf 2 second wait karo phir MainTabs pe jao
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      navigation.replace('MainTabs', undefined);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [navigation]);
 
-  // Tagline: same pattern, later delay
-  const tagOpacity   = useRef(new Animated.Value(0)).current;
-  const tagTranslate = useRef(new Animated.Value(12)).current;
-
-  // ── Animation sequence ────────────────────────────────────────────────────
-
+  // Run animations
   useEffect(() => {
     Animated.parallel([
-
-      // Logo scales + fades in
       Animated.spring(logoScale, {
-        toValue:         1,
-        tension:         55,
-        friction:        7,
-        useNativeDriver: true,
+        toValue: 1, tension: 55, friction: 7, useNativeDriver: true,
       }),
       Animated.timing(logoOpacity, {
-        toValue:         1,
-        duration:        TIMING.logoIn,
-        useNativeDriver: true,
+        toValue: 1, duration: 600, useNativeDriver: true,
       }),
-
-      // App name slides up + fades in
       Animated.sequence([
-        Animated.delay(TIMING.nameDelay),
+        Animated.delay(350),
         Animated.parallel([
           Animated.timing(nameOpacity, {
-            toValue:         1,
-            duration:        TIMING.nameIn,
-            useNativeDriver: true,
+            toValue: 1, duration: 400, useNativeDriver: true,
           }),
-          Animated.timing(nameTranslate, {
-            toValue:         0,
-            duration:        TIMING.nameIn,
-            useNativeDriver: true,
+          Animated.timing(nameY, {
+            toValue: 0, duration: 400, useNativeDriver: true,
           }),
         ]),
       ]),
-
-      // Tagline slides up + fades in
       Animated.sequence([
-        Animated.delay(TIMING.tagDelay),
+        Animated.delay(600),
         Animated.parallel([
           Animated.timing(tagOpacity, {
-            toValue:         1,
-            duration:        TIMING.taglineIn,
-            useNativeDriver: true,
+            toValue: 1, duration: 350, useNativeDriver: true,
           }),
-          Animated.timing(tagTranslate, {
-            toValue:         0,
-            duration:        TIMING.taglineIn,
-            useNativeDriver: true,
+          Animated.timing(tagY, {
+            toValue: 0, duration: 350, useNativeDriver: true,
           }),
         ]),
       ]),
-
     ]).start();
-
-    // Navigate after delay — replace removes Splash from stack
-    const navTimer = setTimeout(() => {
-      navigation.replace('MainTabs', {});
-    }, TIMING.navigate);
-
-    return () => clearTimeout(navTimer);
   }, []);
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Render
-  // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <View style={styles.screen}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor={COLORS.background}
-        translucent={false}
-      />
+      <StatusBar barStyle="light-content" backgroundColor="#1A2340" />
 
-      {/* ── Center content ── */}
-      <View style={styles.centerContent}>
-
-        {/* Logo circle — scale + fade in */}
-        <Animated.View
-          style={[
-            styles.logoWrapper,
-            {
-              opacity:   logoOpacity,
-              transform: [{ scale: logoScale }],
-            },
-          ]}
-        >
-          {/* Outer glow ring */}
+      <View style={styles.center}>
+        <Animated.View style={[
+          styles.logoWrapper,
+          { opacity: logoOpacity, transform: [{ scale: logoScale }] },
+        ]}>
           <View style={styles.logoRing} />
-
-          {/* Inner circle with letter */}
           <View style={styles.logoCircle}>
             <Text style={styles.logoLetter}>A</Text>
           </View>
         </Animated.View>
 
-        {/* App name — slide up + fade */}
-        <Animated.View
-          style={{
-            opacity:   nameOpacity,
-            transform: [{ translateY: nameTranslate }],
-            alignItems: 'center',
-          }}
-        >
-          <Text style={styles.appName}>AasthaBooking</Text>
-        </Animated.View>
+        <Animated.Text style={[
+          styles.appName,
+          { opacity: nameOpacity, transform: [{ translateY: nameY }] },
+        ]}>
+          AasthaBooking
+        </Animated.Text>
 
-        {/* Tagline — slide up + fade */}
-        <Animated.View
-          style={{
-            opacity:   tagOpacity,
-            transform: [{ translateY: tagTranslate }],
-          }}
-        >
-          <Text style={styles.tagline}>Your perfect stay, every time</Text>
-        </Animated.View>
-
+        <Animated.Text style={[
+          styles.tagline,
+          { opacity: tagOpacity, transform: [{ translateY: tagY }] },
+        ]}>
+          Your perfect stay, every time
+        </Animated.Text>
       </View>
 
-      {/* ── Bottom: loading dots + version ── */}
-      <View style={styles.bottomContent}>
+      <View style={styles.bottom}>
         <PulsingDots />
-        <Text style={styles.versionText}>Version 1.0.0</Text>
+        <Text style={styles.version}>Version 1.0.0</Text>
       </View>
-
     </View>
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Styles
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-
   screen: {
     flex:            1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#1A2340',
     alignItems:      'center',
     justifyContent:  'center',
   },
-
-  // ── Center content ──────────────────────────────────────────────────────────
-  centerContent: {
-    flex:       1,
-    alignItems: 'center',
+  center: {
+    flex:           1,
+    alignItems:     'center',
     justifyContent: 'center',
-    gap:        16,
+    gap:            16,
   },
-
-  // ── Logo ────────────────────────────────────────────────────────────────────
   logoWrapper: {
     alignItems:     'center',
     justifyContent: 'center',
@@ -285,60 +171,46 @@ const styles = StyleSheet.create({
     height:          110,
     borderRadius:    55,
     borderWidth:     2,
-    borderColor:     'rgba(240, 144, 48, 0.3)',
+    borderColor:     'rgba(240,144,48,0.3)',
   },
   logoCircle: {
     width:           88,
     height:          88,
     borderRadius:    44,
-    backgroundColor: COLORS.logoCircle,
+    backgroundColor: '#F09030',
     alignItems:      'center',
     justifyContent:  'center',
     ...Platform.select({
       ios: {
-        shadowColor:   COLORS.logoCircle,
+        shadowColor:   '#F09030',
         shadowOffset:  { width: 0, height: 8 },
         shadowOpacity: 0.45,
         shadowRadius:  16,
       },
-      android: {
-        elevation: 12,
-      },
+      android: { elevation: 12 },
     }),
   },
   logoLetter: {
-    fontSize:      42,
-    fontWeight:    '800',
-    color:         COLORS.logoText,
-    letterSpacing: -1,
+    fontSize:   42,
+    fontWeight: '800',
+    color:      '#FFFFFF',
   },
-
-  // ── App name ────────────────────────────────────────────────────────────────
   appName: {
     fontSize:      28,
     fontWeight:    '800',
-    color:         COLORS.appName,
+    color:         '#FFFFFF',
     letterSpacing: -0.5,
-    textAlign:     'center',
   },
-
-  // ── Tagline ─────────────────────────────────────────────────────────────────
   tagline: {
-    fontSize:   14,
-    color:      COLORS.tagline,
-    textAlign:  'center',
-    fontWeight: '400',
-    letterSpacing: 0.3,
+    fontSize:  14,
+    color:     'rgba(255,255,255,0.55)',
+    textAlign: 'center',
   },
-
-  // ── Bottom ──────────────────────────────────────────────────────────────────
-  bottomContent: {
+  bottom: {
     paddingBottom: Platform.OS === 'ios' ? 48 : 36,
     alignItems:    'center',
     gap:           14,
   },
-
-  // ── Pulsing dots ────────────────────────────────────────────────────────────
   dotsRow: {
     flexDirection: 'row',
     gap:           8,
@@ -348,14 +220,10 @@ const styles = StyleSheet.create({
     width:           8,
     height:          8,
     borderRadius:    4,
-    backgroundColor: COLORS.dotsActive,
+    backgroundColor: '#F09030',
   },
-
-  // ── Version ─────────────────────────────────────────────────────────────────
-  versionText: {
-    fontSize:      12,
-    color:         'rgba(255,255,255,0.25)',
-    letterSpacing: 0.3,
+  version: {
+    fontSize: 12,
+    color:    'rgba(255,255,255,0.25)',
   },
-
 });

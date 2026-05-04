@@ -1,28 +1,21 @@
 // src/navigation/AuthNavigator.tsx
 
-import React from 'react';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { AuthStackParamList } from './types';
-import { LoginScreen } from '../screens/auth/LoginScreen';
+import React                             from 'react';
+import { createNativeStackNavigator }    from '@react-navigation/native-stack';
+import { AuthStackParamList }            from './types';
+import { LoginScreen }                   from '../screens/auth/LoginScreen';
+import { SignupScreen }                  from '../screens/auth/SignupScreen'; // 🆕
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
-export const AuthNavigator: React.FC = () => {
-  return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false,          // we build our own headers
-        animation:   'fade',         // clean crossfade between auth screens
-        contentStyle: { backgroundColor: '#F8F9FA' },
-      }}
-    >
-      <Stack.Screen name="Login" component={LoginScreen} />
-      {/*
-        Future screens slot in here — order = default initial route:
-        <Stack.Screen name="Register"       component={RegisterScreen} />
-        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-        <Stack.Screen name="OTPVerify"      component={OTPVerifyScreen} />
-      */}
-    </Stack.Navigator>
-  );
-};
+export const AuthNavigator: React.FC = () => (
+  <Stack.Navigator
+    screenOptions={{
+      headerShown: false,
+      animation:   'slide_from_right',
+    }}
+  >
+    <Stack.Screen name="Login"  component={LoginScreen}  />
+    <Stack.Screen name="Signup" component={SignupScreen} />
+  </Stack.Navigator>
+);

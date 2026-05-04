@@ -94,10 +94,10 @@ export type BookingStatus =
 // Updated context value — replaces the old BookingContextValue
 // Add these two fields to the existing BookingContextValue interface
 
-export interface BookingHistoryContextAdditions {
-  bookingHistory:      BookingRecord[];
-  addBookingToHistory: (record: Omit<BookingRecord, 'bookingId' | 'bookedAt' | 'status'>) => Promise<string>;
-  // returns bookingId so caller can show it in confirmation UI
-  historyLoading:      boolean;   // true while AsyncStorage loads on app start
-}
+// export interface BookingHistoryContextAdditions {
+//   bookingHistory:      BookingRecord[];
+//   addBookingToHistory: (record: Omit<BookingRecord, 'bookingId' | 'bookedAt' | 'status'>) => Promise<string>;
+//   // returns bookingId so caller can show it in confirmation UI
+//   historyLoading:      boolean;   // true while AsyncStorage loads on app start
+// }
 

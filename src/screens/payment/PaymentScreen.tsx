@@ -408,7 +408,9 @@ export const PaymentScreen: React.FC<Props> = ({ navigation }) => {
         // Navigate anyway — booking is confirmed even if history fails
         } finally {
         setPaying(false);
-        navigation.navigate('PaymentSuccess');
+        navigation.navigate('PaymentSuccess', {
+        paymentMethod: selectedMethod,
+        });
         }
     }, FAKE_PAYMENT_DELAY_MS);
 
@@ -420,6 +422,7 @@ export const PaymentScreen: React.FC<Props> = ({ navigation }) => {
     checkOutDate,
     guests,
     totalPrice,
+    selectedMethod,
     addBookingToHistory,
     navigation,
     ]);

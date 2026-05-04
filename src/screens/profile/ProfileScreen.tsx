@@ -1,6 +1,6 @@
 
 
-import React                             from 'react';
+import React, { useCallback }                             from 'react';
 import {
   View,
   Text,
@@ -20,9 +20,6 @@ import { AppStackParamList }             from '../../navigation/types';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type ProfileNavProp = NativeStackNavigationProp<AppStackParamList>;
-
-// Aur useNavigation call:
-const navigation = useNavigation<ProfileNavProp>();
 
 interface OptionRowProps {
   icon:      string;
@@ -72,24 +69,36 @@ export const ProfileScreen: React.FC = () => {
     : '?';
 
   // ── Logout confirmation ───────────────────────────────────────────────────
-  const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        {
-          text:  'Cancel',
-          style: 'cancel',
+  const handleLogout = useCallback(() => {
+  Alert.alert(
+    'Logout',
+    'Are you sure you want to logout?',
+    [
+      {
+        text:  'Cancel',
+        style: 'cancel',
+      },
+      {
+        text:  'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          // ✅ Fix 1: properly await karo
+          // ✅ Fix 2: try-catch — silent failure prevent karo
+          try {
+            await signOut();
+            // Navigation automatic hoga — RootNavigator handle karega
+            // Yahan navigate() call mat karo
+          } catch (err) {
+            if (__DEV__) {
+              console.error('[ProfileScreen] signOut failed:', err);
+            }
+          }
         },
-        {
-          text:    'Logout',
-          style:   'destructive',
-          onPress: () => signOut(),
-        },
-      ],
-      { cancelable: true },
-    );
-  };
+      },
+    ],
+    { cancelable: true },
+  );
+}, [signOut]);
 
   // ── Menu options ──────────────────────────────────────────────────────────
   const OPTIONS = [

@@ -1,124 +1,139 @@
 // src/screens/auth/LoginScreen.tsx
-import React, { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
+
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  KeyboardAvoidingView,
-  ScrollView,
-  Platform,
   StatusBar,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Input }  from '../../components/ui/Input';
-import { Button } from '../../components/ui/Button';
-import { Colors, Spacing, BorderRadius, TextStyles, FontSize } from '../../theme';
+  Image,
+  Platform,
+}                                        from 'react-native';
+import { SafeAreaView }                  from 'react-native-safe-area-context';
+import { NativeStackScreenProps }        from '@react-navigation/native-stack';
+import { AuthStackParamList }            from '../../navigation/types';
+import { useAuth }                       from '../../context/AuthContext';
+import { useLogin }                      from '../../hooks/useLogin';
+import { Input }                         from '../../components/ui/Input';
+import { Button }                        from '../../components/ui/Button';
+import { Colors, Spacing, BorderRadius } from '../../theme';
 
-import { useLogin } from '../../hooks/useLogin';
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-// ─── Login mode: email or phone ───────────────────────────────────────────────
+type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 type LoginMode = 'email' | 'phone';
 
-export const LoginScreen: React.FC = () => {
+// ─────────────────────────────────────────────────────────────────────────────
+// LoginScreen
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const LoginScreen: React.FC<Props> = ({ navigation }) => {
+  const { signIn }                              = useAuth();
+  const { login, loading, error: apiError,
+          clearError }                          = useLogin();
+
   const [mode,     setMode]     = useState<LoginMode>('email');
-  const [identity, setIdentity] = useState('');   // email OR phone
+  const [identity, setIdentity] = useState('');
   const [password, setPassword] = useState('');
 
-  // Inline validation — purely for UI state (no API yet)
   const [identityError, setIdentityError] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
-  const { login, loading, error: apiError, clearError } = useLogin();
-  const { signIn } = useAuth();
+  // ── Form validity ─────────────────────────────────────────────────────────
+  const isFormFilled =
+    identity.trim().length > 0 && password.length >= 6;
 
-  const isFormFilled = identity.trim().length > 0 && password.length >= 6;
+  // ── Handlers ──────────────────────────────────────────────────────────────
 
-  // Clear API error whenever user starts retyping
-  // Add onChangeText wrappers:
-  const handleEmailChange = (text: string) => {
-    setIdentity(text);
-    if (apiError) clearError();
-  };
-
-  const handlePasswordChange = (text: string) => {
-    setPassword(text);
-    if (apiError) clearError();
-  };
-
-
-  // Clear API error whenever user starts retyping
-  // Add onChangeText wrappers:
-  const handleSignIn = async () => {
-  // Client-side validation (yeh same rahega)
-    let valid = true;
-    if (!identity.includes('@')) {
-      setIdentityError('Enter a valid email address');
-      valid = false;
-    } else {
-      setIdentityError('');
-    }
-    if (password.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
-      valid = false;
-    } else {
-      setPasswordError('');
-    }
-    if (!valid) return;
-
-    // Hook se payload lo
-    const payload = await login({ email: identity, password });
-
-    if (payload) {
-      // AuthProvider ko do — woh storage aur state dono handle karega
-      await signIn(payload);
-      // Navigation automatic — isAuthenticated true hoga → AppNavigator
-    }
-  }; 
-
-  const handleModeSwitch = (next: LoginMode) => {
+  const handleModeSwitch = useCallback((next: LoginMode) => {
     setMode(next);
     setIdentity('');
     setIdentityError('');
     setPasswordError('');
-  };
+    if (apiError) clearError();
+  }, [apiError, clearError]);
 
+  const handleIdentityChange = useCallback((text: string) => {
+    setIdentity(text);
+    if (identityError) setIdentityError('');
+    if (apiError)      clearError();
+  }, [identityError, apiError, clearError]);
+
+  const handlePasswordChange = useCallback((text: string) => {
+    setPassword(text);
+    if (passwordError) setPasswordError('');
+    if (apiError)      clearError();
+  }, [passwordError, apiError, clearError]);
+
+  const handleLogin = useCallback(async () => {
+    let valid = true;
+
+    if (mode === 'email' && !identity.includes('@')) {
+      setIdentityError('Enter a valid email address.');
+      valid = false;
+    } else if (mode === 'phone' && identity.trim().length < 10) {
+      setIdentityError('Enter a valid 10-digit phone number.');
+      valid = false;
+    } else {
+      setIdentityError('');
+    }
+
+    if (password.length < 6) {
+      setPasswordError('Password must be at least 6 characters.');
+      valid = false;
+    } else {
+      setPasswordError('');
+    }
+
+    if (!valid) return;
+
+    const payload = await login({ email: identity, password });
+    if (payload) {
+      await signIn(payload);
+    }
+  }, [mode, identity, password, login, signIn]);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Render — single flex column, no ScrollView
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          style={styles.flex}
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
+      {/*
+        Single column layout.
+        flex: 1 → fills screen height.
+        justifyContent: 'space-between' → logo+form at top, footer at bottom.
+        No ScrollView, no absolute positioning.
+      */}
+      <View style={styles.container}>
 
-          {/* ── Brand ──────────────────────────────────────────────── */}
-          <View style={styles.brandHeader}>
-            <View style={styles.logoMark}>
-              <Text style={styles.logoLetter}>A</Text>
-            </View>
-            <Text style={styles.brandName}>AasthaBooking</Text>
-            <Text style={styles.brandTagline}>Your perfect stay, every time</Text>
+        {/* ── TOP: Logo + Welcome ── */}
+        <View style={styles.topSection}>
+
+          {/* Logo */}
+          <View style={styles.logoWrapper}>
+            <Image
+              // 🔁 Apna logo path yahan set karo:
+              source={require('../../assets/logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
           </View>
 
-          {/* ── Welcome copy ────────────────────────────────────────── */}
-          <View style={styles.welcomeBlock}>
-            <Text style={styles.welcomeTitle}>Welcome back</Text>
-            <Text style={styles.welcomeSub}>
-              Sign in to continue to your bookings
-            </Text>
-          </View>
+          {/* Welcome text */}
+          <Text style={styles.welcomeTitle}>Welcome back</Text>
+          <Text style={styles.welcomeSub}>
+            Sign in to continue to your bookings
+          </Text>
+        </View>
 
-          {/* ── Email / Phone toggle ─────────────────────────────────── */}
+        {/* ── MIDDLE: Form ── */}
+        <View style={styles.formSection}>
+
+          {/* Email / Phone tab */}
           <View style={styles.tabBar}>
             {(['email', 'phone'] as LoginMode[]).map(m => (
               <TouchableOpacity
@@ -127,171 +142,153 @@ export const LoginScreen: React.FC = () => {
                 onPress={() => handleModeSwitch(m)}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.tabLabel, mode === m && styles.tabLabelActive]}>
+                <Text style={[
+                  styles.tabLabel,
+                  mode === m && styles.tabLabelActive,
+                ]}>
                   {m === 'email' ? 'Email' : 'Phone'}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          {/* ── Form ─────────────────────────────────────────────────── */}
-          <View style={styles.form}>
-
-            {mode === 'email' ? (
-              <Input
-                label="Email address"
-                placeholder="you@example.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                value={identity}
-                onChangeText={handleEmailChange}
-                error={identityError}
-                required
-              />
-            ) : (
-              <Input
-                label="Phone number"
-                placeholder="+91 98765 43210"
-                keyboardType="phone-pad"
-                value={identity}
-                onChangeText={handleEmailChange}
-                error={identityError}
-                required
-              />
-            )}
-
+          {/* Identity input */}
+          {mode === 'email' ? (
             <Input
-              label="Password"
-              placeholder="Enter your password"
-              isPassword
-              value={password}
-              onChangeText={handlePasswordChange}
-              error={passwordError}
-              hint={!passwordError ? 'Minimum 6 characters' : undefined}
-              required
+              label="Email address"
+              placeholder="you@example.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={identity}
+              onChangeText={handleIdentityChange}
+              error={identityError}
             />
-
-            {/* Forgot password */}
-            <TouchableOpacity
-              style={styles.forgotRow}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Text style={styles.forgotLink}>Forgot password?</Text>
-            </TouchableOpacity>
-
-            <View style={styles.gap} />
-
-              {apiError ? (
-                <View style={styles.apiErrorBox}>
-                  <Text style={styles.apiErrorText}>{apiError}</Text>
-                </View>
-              ) : null}
-
-            {/* Primary CTA */}
-            <Button
-              label="Sign In"
-              onPress={handleSignIn}
-              loading={loading}
-              disabled={!isFormFilled || loading}
+          ) : (
+            <Input
+              label="Phone number"
+              placeholder="+91 98765 43210"
+              keyboardType="phone-pad"
+              value={identity}
+              onChangeText={handleIdentityChange}
+              error={identityError}
             />
+          )}
 
-            {/* Divider */}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerLabel}>or continue with</Text>
-              <View style={styles.dividerLine} />
+          {/* Password */}
+          <Input
+            label="Password"
+            placeholder="Enter your password"
+            isPassword
+            value={password}
+            onChangeText={handlePasswordChange}
+            error={passwordError}
+          />
+
+          {/* Forgot password */}
+          <TouchableOpacity
+            style={styles.forgotRow}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.forgotText}>Forgot password?</Text>
+          </TouchableOpacity>
+
+          {/* API error */}
+          {apiError ? (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorBoxText}>{apiError}</Text>
             </View>
+          ) : null}
 
-            {/* Google — outline variant */}
-            <Button
-              label="Continue with Google"
-              onPress={() => { /* Google OAuth — Step 5 */ }}
-              variant="outline"
-            />
-          </View>
+          {/* Submit */}
+          <Button
+            label="Sign In"
+            onPress={handleLogin}
+            loading={loading}
+            disabled={!isFormFilled || loading}
+          />
 
-          {/* ── Footer ─────────────────────────────────────────────── */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Don't have an account? </Text>
-            <TouchableOpacity>
-              <Text style={styles.footerLink}>Create account</Text>
-            </TouchableOpacity>
-          </View>
+        </View>
 
-        </ScrollView>
-      </KeyboardAvoidingView>
+        {/* ── BOTTOM: Signup link — part of same layout ── */}
+        {/*
+          marginTop: 'auto' pushes this to bottom naturally
+          within flex column — no absolute, no fixed footer
+        */}
+        <View style={styles.footerRow}>
+          <Text style={styles.footerText}>Don't have an account? </Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Signup')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.footerLink}>Create account</Text>
+          </TouchableOpacity>
+        </View>
+
+      </View>
     </SafeAreaView>
   );
 };
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
-  flex: { flex: 1 },
 
-  scroll: {
-    flexGrow:          1,
+  safe: {
+    flex:            1,
+    backgroundColor: Colors.background,
+  },
+
+  // Single full-height column
+  container: {
+    flex:              1,
     paddingHorizontal: Spacing[5],
-    paddingBottom:     Spacing[8],
+    paddingTop:        Spacing[4],
+    paddingBottom:     Spacing[4],
   },
 
-  // Brand
-  brandHeader: {
-    alignItems:    'center',
-    paddingTop:    Spacing[8],
-    paddingBottom: Spacing[8],
+  // ── Top section ────────────────────────────────────────────────────────────
+  topSection: {
+    alignItems:   'center',
+    marginBottom: Spacing[5],
   },
-  logoMark: {
-    width:           54,
-    height:          54,
-    borderRadius:    BorderRadius.lg,
-    backgroundColor: Colors.primary,
-    alignItems:      'center',
-    justifyContent:  'center',
-    marginBottom:    Spacing[3],
+  logoWrapper: {
+    marginBottom: Spacing[3],
   },
-  logoLetter: {
-    fontSize:   26,
-    fontWeight: '700',
-    color:      Colors.textOnPrimary,
-    lineHeight: 30,
+  logo: {
+    width:  120,
+    height: 60,
   },
-  brandName: {
-    ...TextStyles.h4,
-    color:        Colors.secondary,
-    marginBottom: Spacing[1],
-  },
-  brandTagline: {
-    ...TextStyles.bodySmall,
-    color: Colors.textSecondary,
-  },
-
-  // Welcome
-  welcomeBlock: { marginBottom: Spacing[6] },
   welcomeTitle: {
-    ...TextStyles.h2,
-    color:        Colors.textPrimary,
-    marginBottom: Spacing[1],
+    fontSize:      22,
+    fontWeight:    '700',
+    color:         Colors.textPrimary,
+    marginBottom:  Spacing[1],
+    letterSpacing: -0.3,
   },
   welcomeSub: {
-    ...TextStyles.body,
-    color: Colors.textSecondary,
+    fontSize:  13,
+    color:     Colors.textSecondary,
+    textAlign: 'center',
   },
 
-  // Tab switcher
+  // ── Form section ───────────────────────────────────────────────────────────
+  formSection: {
+    // Takes natural space — no flex:1 so footer stays at bottom via marginTop auto
+  },
+
+  // Tab bar
   tabBar: {
-    flexDirection:  'row',
+    flexDirection:   'row',
     backgroundColor: Colors.surface,
-    borderRadius:   BorderRadius.md,
-    borderWidth:    1,
-    borderColor:    Colors.border,
-    padding:        Spacing[1],
-    marginBottom:   Spacing[6],
+    borderRadius:    BorderRadius.md,
+    borderWidth:     1,
+    borderColor:     Colors.border,
+    padding:         Spacing[1],
+    marginBottom:    Spacing[4],
   },
   tab: {
     flex:           1,
-    height:         36,
+    height:         34,
     borderRadius:   BorderRadius.sm,
     alignItems:     'center',
     justifyContent: 'center',
@@ -300,70 +297,56 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
   },
   tabLabel: {
-    ...TextStyles.label,
-    color: Colors.textSecondary,
+    fontSize:   13,
+    fontWeight: '500',
+    color:      Colors.textSecondary,
   },
   tabLabelActive: {
     color:      Colors.textOnPrimary,
     fontWeight: '600',
   },
 
-  // Form
-  form: {},
+  // Forgot
   forgotRow: {
     alignSelf:    'flex-end',
-    marginTop:    -Spacing[3],
-    marginBottom: Spacing[2],
+    marginTop:    -Spacing[2],
+    marginBottom: Spacing[3],
   },
-  forgotLink: {
-    ...TextStyles.label,
-    color: Colors.primary,
+  forgotText: {
+    fontSize:   13,
+    fontWeight: '500',
+    color:      Colors.primary,
   },
-  gap: { height: Spacing[4] },
 
-  // Divider
-  divider: {
+  // API error
+  errorBox: {
+    backgroundColor: Colors.errorSurface,
+    borderRadius:    BorderRadius.md,
+    borderWidth:     1,
+    borderColor:     Colors.errorBorder,
+    padding:         Spacing[3],
+    marginBottom:    Spacing[3],
+  },
+  errorBoxText: {
+    fontSize:  13,
+    color:     Colors.error,
+    textAlign: 'center',
+  },
+
+  // ── Footer — natural bottom via marginTop auto ──────────────────────────────
+  footerRow: {
     flexDirection:  'row',
+    justifyContent: 'center',
     alignItems:     'center',
-    marginVertical: Spacing[5],
-    gap:            Spacing[3],
-  },
-  dividerLine: {
-    flex:            1,
-    height:          1,
-    backgroundColor: Colors.border,
-  },
-  dividerLabel: {
-    ...TextStyles.caption,
-    color: Colors.textSecondary,
-  },
-  apiErrorBox: {
-  backgroundColor: Colors.errorSurface,
-  borderRadius:    BorderRadius.md,
-  borderWidth:     1,
-  borderColor:     Colors.errorBorder,
-  padding:         Spacing[3],
-  marginBottom:    Spacing[4],
-},
-apiErrorText: {
-  ...TextStyles.bodySmall,
-  color:     Colors.error,
-  textAlign: 'center',
-},
-
-  // Footer
-  footer: {
-    flexDirection:   'row',
-    justifyContent:  'center',
-    alignItems:      'center',
-    paddingTop:      Spacing[8],
+    marginTop:      'auto',   // ← pushes to bottom within flex column
+    paddingTop:     Spacing[4],
   },
   footerText: {
-    ...TextStyles.body,
-    color: Colors.textSecondary,
+    fontSize: 14,
+    color:    Colors.textSecondary,
   },
   footerLink: {
-    ...TextStyles.body,
+    fontSize:   14,
     color:      Colors.primary,
     fontWeight: '600',
   },

@@ -1,46 +1,44 @@
 // src/storage/tokenStorage.ts
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage        from '@react-native-async-storage/async-storage';
 import { PersistedSession } from '../types/auth.types';
 
-// ── Key constants ─────────────────────────────────────────────────────────────
-// Namespaced with @appname/ to avoid collision with other libs
-
-const STORAGE_KEYS = {
-  ACCESS_TOKEN:  '@aastha/access_token',
-  REFRESH_TOKEN: '@aastha/refresh_token',
-  USER:          '@aastha/user',
-} as const;
-
-const KEYS = {
-  SESSION: '@aastha/session',   // store as one JSON blob — single read on launch
-} as const;
-
-// ── Save ──────────────────────────────────────────────────────────────────────
+const SESSION_KEY = '@aastha/session';
 
 export const persistSession = async (
   session: PersistedSession,
 ): Promise<void> => {
-  await AsyncStorage.setItem(KEYS.SESSION, JSON.stringify(session));
+  try {
+    await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  } catch (err) {
+    if (__DEV__) console.error('[tokenStorage] persistSession error:', err);
+    throw err;
+  }
 };
-
-// ── Read ──────────────────────────────────────────────────────────────────────
 
 export const loadSession = async (): Promise<PersistedSession | null> => {
   try {
-    const raw = await AsyncStorage.getItem(KEYS.SESSION);
+    const raw = await AsyncStorage.getItem(SESSION_KEY);
     if (!raw) return null;
     return JSON.parse(raw) as PersistedSession;
   } catch {
-    // Corrupted data — treat as no session
     return null;
   }
 };
 
-
-
-// ── Clear (logout) ────────────────────────────────────────────────────────────
-
-export const destroySession = async (): Promise<void> => {
-  await AsyncStorage.removeItem(KEYS.SESSION);
+export const clearSession = async (): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem(SESSION_KEY);
+  } catch (err) {
+    if (__DEV__) console.error('[tokenStorage] clearSession error:', err);
+    throw err;
+  }
 };
+
+// Alias for backward compatibility
+export const getAccessToken = async (): Promise<string | null> => {
+  const session = await loadSession();
+  return session?.accessToken ?? null;
+};
+
+export const clearAllTokens = clearSession;

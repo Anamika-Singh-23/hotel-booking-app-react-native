@@ -16,11 +16,12 @@ import {
   TextInput,
   StyleSheet,
   ListRenderItem,
-  SafeAreaView,
   ActivityIndicator,
   Platform,
   StatusBar,
+  KeyboardAvoidingView,
 }                                        from 'react-native';
+import { SafeAreaView }                 from 'react-native-safe-area-context';
 import { useNavigation }                 from '@react-navigation/native';
 import { NativeStackNavigationProp }     from '@react-navigation/native-stack';
 import { useHotels }                     from '../../hooks/useHotels';
@@ -360,6 +361,12 @@ export const HomeScreen: React.FC = () => {
         navigation={navigation}
       />
 
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      ></KeyboardAvoidingView>
+
       <FlatList
         data={filteredHotels}
         keyExtractor={keyExtractor}
@@ -453,6 +460,9 @@ const styles = StyleSheet.create({
   safe: {
     flex:            1,
     backgroundColor: '#F8F9FA',
+  },
+  flex: {
+    flex: 1,
   },
 
   // ── Header ─────────────────────────────────────────────────────────────────

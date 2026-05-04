@@ -2,37 +2,49 @@
 
 import {
   LoginCredentials,
-  SignInPayload,
-} from '../types/auth.types';
+  SignupCredentials,
+  AuthUser,
+  AuthTokens,
+}                    from '../types/auth.types';
 
-// ── Fake credentials & response data ─────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-const VALID_EMAIL    = 'test@test.com';
-const VALID_PASSWORD = '123456';
+interface AuthResult {
+  user:   AuthUser;
+  tokens: AuthTokens;
+}
 
-const FAKE_USER_DB: Record<string, SignInPayload> = {
-  [VALID_EMAIL]: {
+// ── Fake database ─────────────────────────────────────────────────────────────
+// In-memory store — app restart pe reset hoga
+// Real app mein yeh backend API karega
+
+const REGISTERED_USERS: Map<string, {
+  user:     AuthUser;
+  password: string;
+  tokens:   AuthTokens;
+}> = new Map([
+  // Default test user — pehle se registered
+  ['test@test.com', {
     user: {
       id:        'usr_001',
       name:      'Ana',
-      email:     VALID_EMAIL,
-      phone:     null,
+      email:     'test@test.com',
       avatarUrl: null,
     },
+    password: '123456',
     tokens: {
-      accessToken:  'fake_access_eyJhbGciOiJIUzI1NiJ9_token',
-      refreshToken: 'fake_refresh_eyJhbGciOiJIUzI1NiJ9_token',
+      accessToken:  'fake_access_token_xyz',
+      refreshToken: 'fake_refresh_token_xyz',
     },
-  },
-};
+  }],
+]);
 
-// ── Custom error class ────────────────────────────────────────────────────────
-// Gives catch blocks richer info than a plain Error string
+// ── AuthError class ───────────────────────────────────────────────────────────
 
 export class AuthError extends Error {
   constructor(
-    public message: string,
-    public code: string,
+    public message:    string,
+    public code:       string,
     public statusCode: number,
   ) {
     super(message);
@@ -40,62 +52,97 @@ export class AuthError extends Error {
   }
 }
 
-// ── The fake API call ─────────────────────────────────────────────────────────
+// ── Fake network delay ────────────────────────────────────────────────────────
 
-const FAKE_DELAY_MS = 1500;  // simulates real network latency
+const DELAY_MS = 1500;
+
+const withDelay = <T>(fn: () => T): Promise<T> =>
+  new Promise((resolve, reject) => {
+    setTimeout(() => {
+      try {
+        resolve(fn());
+      } catch (err) {
+        reject(err);
+      }
+    }, DELAY_MS);
+  });
+
+// ── fakeAuthService ───────────────────────────────────────────────────────────
 
 export const fakeAuthService = {
 
-  loginWithEmail: (
-    credentials: LoginCredentials,
-  ): Promise<SignInPayload> => {
+  // ── Existing: loginWithEmail ───────────────────────────────────────────────
 
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
+  loginWithEmail: (credentials: LoginCredentials): Promise<AuthResult> =>
+    withDelay(() => {
+      const { email, password } = credentials;
 
-        const { email, password } = credentials;
+      if (!email || !password) {
+        throw new AuthError(
+          'Email and password required.',
+          'MISSING_FIELDS',
+          400,
+        );
+      }
 
-        // Case 1: empty fields (belt-and-suspenders — hook validates too)
-        if (!email || !password) {
-          reject(
-            new AuthError(
-              'Email and password are required.',
-              'MISSING_FIELDS',
-              400,
-            ),
-          );
-          return;
-        }
+      const record = REGISTERED_USERS.get(email.toLowerCase().trim());
 
-        // Case 2: unknown email
-        const record = FAKE_USER_DB[email.toLowerCase().trim()];
-        if (!record) {
-          reject(
-            new AuthError(
-              'No account found with this email.',
-              'USER_NOT_FOUND',
-              404,
-            ),
-          );
-          return;
-        }
+      if (!record) {
+        throw new AuthError(
+          'No account found with this email.',
+          'USER_NOT_FOUND',
+          404,
+        );
+      }
 
-        // Case 3: wrong password
-        if (password !== VALID_PASSWORD) {
-          reject(
-            new AuthError(
-              'Incorrect password. Please try again.',
-              'INVALID_CREDENTIALS',
-              401,
-            ),
-          );
-          return;
-        }
+      if (record.password !== password) {
+        throw new AuthError(
+          'Incorrect password. Please try again.',
+          'INVALID_CREDENTIALS',
+          401,
+        );
+      }
 
-        // Case 4: success
-        resolve(record);
+      return { user: record.user, tokens: record.tokens };
+    }),
 
-      }, FAKE_DELAY_MS);
-    });
-  },
+  // ── 🆕 New: registerWithEmail ──────────────────────────────────────────────
+
+  registerWithEmail: (credentials: SignupCredentials): Promise<AuthResult> =>
+    withDelay(() => {
+      const { name, email, password } = credentials;
+      const normalizedEmail = email.toLowerCase().trim();
+
+      // Check: email already registered?
+      if (REGISTERED_USERS.has(normalizedEmail)) {
+        throw new AuthError(
+          'An account with this email already exists.',
+          'USER_EXISTS',
+          409,
+        );
+      }
+
+      // Create new fake user
+      const newUser: AuthUser = {
+        id:        `usr_${Date.now()}`,   // unique fake ID
+        name:      name.trim(),
+        email:     normalizedEmail,
+        avatarUrl: null,
+      };
+
+      const newTokens: AuthTokens = {
+        accessToken:  `fake_access_${Date.now()}`,
+        refreshToken: `fake_refresh_${Date.now()}`,
+      };
+
+      // Save to in-memory "database"
+      // Next login bhi kaam karega same session mein
+      REGISTERED_USERS.set(normalizedEmail, {
+        user:     newUser,
+        password: password,
+        tokens:   newTokens,
+      });
+
+      return { user: newUser, tokens: newTokens };
+    }),
 };

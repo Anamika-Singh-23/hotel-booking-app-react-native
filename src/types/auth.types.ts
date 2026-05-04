@@ -9,7 +9,7 @@ export interface AuthUser {
   id:        string;
   name:      string;
   email:     string;
-  phone:      string | null;
+  phone?:      string;
   avatarUrl: string | null;
 }
 
@@ -34,12 +34,11 @@ export interface AuthContextValue {
   // ── State ──────────────────────────────────────────────
   isAuthenticated: boolean;
   user:            AuthUser | null;
-  loading:         boolean;       // true while restoring session on app launch
+  isLoading:         boolean;       // true while restoring session on app launch
 
   // ── Actions ────────────────────────────────────────────
   signIn:          (payload: SignInPayload) => Promise<void>;
   signOut:         () => Promise<void>;
-  restoreSession:  () => Promise<void>; // called on app launch
 }
 
 // ─── Persisted session shape ──────────────────────────────────────────────────
@@ -51,11 +50,9 @@ export interface PersistedSession {
   refreshToken: string;
 }
 
-
-// What the hook exposes to the UI
-export interface UseLoginReturn {
-  login:      (credentials: LoginCredentials) => Promise<boolean>;
-  loading:    boolean;
-  error:      string | null;
-  clearError: () => void;
+export interface SignupCredentials {
+  name:            string;
+  email:           string;
+  password:        string;
+  confirmPassword: string;
 }
